@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int                  @id @default(autoincrement())
+  name        String
+  email       String               @unique
+  completed   Boolean              @default(false)
+  password    String
+  role        String               @default("user")
+  createdAt   DateTime             @default(now())
+  todos       Task[]
+  resetTokens PasswordResetToken[]
+}
+
+model Task {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  completed   Boolean   @default(false)
+  progress    Int       @default(0)
+  priority    Priority  @default(MEDIUM)
+  dueDate     DateTime?
+  status      Status    @default(NOT_STARTED)
+  order       Int?      @default(0)
+  tags        Tag[]     @relation("TaskTags")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  // 追加: TimeEntry との逆リレーション
+  timeEntries TimeEntry[]
+  Project     Project?    @relation(fields: [projectId], references: [id])
+  projectId   Int?
+}
+
+model TimeEntry {
+  id              Int      @id @default(autoincrement())
+  startTime       DateTime
+  durationMinutes Int
+  task            Task     @relation(fields: [taskId], references: [id])
+  taskId          Int
+}
+
+model Project {
+  id    Int    @id @default(autoincrement())
+  name  String
+  tasks Task[]
+}
+
+model Tag {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  // 修正: referencesを削除
+  tasks Task[] @relation("TaskTags")
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum Status {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model PasswordResetToken {
+  token   String   @id
+  userId  Int
+  user    User     @relation(fields: [userId], references: [id])
+  expires DateTime
+}

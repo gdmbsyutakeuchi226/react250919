@@ -1,0 +1,111 @@
+// pages/api/tasks/index.ts
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { prisma } from '@/lib/prisma';
+import jwt from 'jsonwebtoken';
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // 認証
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ message: 'Unauthorized' });
+
+  let userId: number;
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded: any = jwt.verify(token, process.env.JWT_SECRET as string);
+    userId = decoded.id;
+    if (!userId) throw new Error('no user id');
+  } catch {
+    return res.status(401).json({ message: 'Invalid token' });
+  }
+
+  if (req.method === 'GET') {
+    try {
+      // クエリ取得
+      const page = parseInt((req.query.page as string) || '1', 10);
+      const limit = parseInt((req.query.limit as string) || '10', 10);
+      const skip = (page - 1) * limit;
+
+      const q = (req.query.q as string) || ''; // タイトル検索
+      const priority = (req.query.priority as string) || ''; // LOW/MEDIUM/HIGH
+      const status = (req.query.status as string) || ''; // NOT_STARTED/IN_PROGRESS/COMPLETED
+      const completed = req.query.completed as string | undefined; // "true" | "false"
+      const dateFrom = (req.query.dateFrom as string) || '';
+      const dateTo = (req.query.dateTo as string) || '';
+      const tagQuery = (req.query.tag as string) || ''; // カンマ区切り許容
+
+      // where 条件
+      const where: any = { userId };
+
+      if (q) {
+        where.title = { contains: q, mode: 'insensitive' };
+      }
+      if (priority) {
+        where.priority = priority;
+      }
+      if (status) {
+        where.status = status;
+      }
+      if (typeof completed !== 'undefined') {
+        if (completed === 'true' || completed === 'false') {
+          where.completed = completed === 'true';
+        }
+      }
+      if (dateFrom || dateTo) {
+        where.dueDate = {};
+        if (dateFrom) where.dueDate.gte = new Date(dateFrom);
+        if (dateTo) {
+          const end = new Date(dateTo);
+          end.setHours(23, 59, 59, 999);
+          where.dueDate.lte = end;
+        }
+      }
+      if (tagQuery) {
+        const tags = tagQuery
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean);
+
+        if (tags.length > 0) {
+          // いずれかのタグ名を含む（OR）
+          where.tags = {
+            some: {
+              name: {
+                in: tags,
+                mode: 'insensitive',
+              },
+            },
+          };
+        }
+      }
+
+      const [tasks, total] = await Promise.all([
+        prisma.task.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: [{ order: 'asc' }, { id: 'asc' }],
+          include: { tags: true, user: true },
+        }),
+        prisma.task.count({ where }),
+      ]);
+
+      // フロントで扱いやすい形に正規化
+      const normalized = tasks.map((t) => ({
+        ...t,
+        dueDate: t.dueDate ? t.dueDate.toISOString() : null,
+        createdAt: t.createdAt.toISOString(),
+        updatedAt: t.updatedAt.toISOString(),
+        tags: Array.isArray(t.tags) ? t.tags : [],
+      }));
+
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+      return res.status(200).json({ tasks: normalized, total, totalPages, page, limit });
+    } catch (err: any) {
+      console.error('Error in GET /api/tasks:', err);
+      return res.status(500).json({ message: 'Internal Server Error', error: err.message });
+    }
+  }
+
+  // 必要なら POST/DELETE など既存ロジックをここに保持
+  return res.status(405).json({ message: 'Method Not Allowed' });
+}
