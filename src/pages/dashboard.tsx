@@ -11,8 +11,20 @@ import {
 } from '@hello-pangea/dnd';
 import Navigation from '../components/Navigation';
 
-type Priority = '低い' | '普通' | '高い';
-type Status = '未着手' | '進行中' | '完了';
+type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
+type Status = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+
+const PRIORITY_LABEL: Record<Priority, string> = {
+  LOW: '低い',
+  MEDIUM: '普通',
+  HIGH: '高い',
+};
+
+const STATUS_LABEL: Record<Status, string> = {
+  NOT_STARTED: '未着手',
+  IN_PROGRESS: '進行中',
+  COMPLETED: '完了',
+};
 
 type Tag = { id: number; name: string };
 type Task = {
@@ -56,8 +68,8 @@ export default function Dashboard() {
 
   // 追加フォーム
   const [newTitle, setNewTitle] = useState('');
-  const [newPriority, setNewPriority] = useState<Priority>('普通');
-  const [newStatus, setNewStatus] = useState<Status>('未着手');
+  const [newPriority, setNewPriority] = useState<Priority>('MEDIUM');
+  const [newStatus, setNewStatus] = useState<Status>('NOT_STARTED');
   const [newDue, setNewDue] = useState<string>('');
   const [newTags, setNewTags] = useState<string>('');
   const [newDesc, setNewDesc] = useState<string>('');
@@ -284,8 +296,8 @@ export default function Dashboard() {
     setNewDesc('');
     setNewDue('');
     setNewTags('');
-    setNewPriority('普通');
-    setNewStatus('未着手');
+    setNewPriority('MEDIUM');
+    setNewStatus('NOT_STARTED');
   }
 
   async function updateTask(
@@ -636,9 +648,9 @@ export default function Dashboard() {
                 onChange={(e) => setFPriority(e.target.value as any)}
               >
                 <option value="">すべて</option>
-                <option value="LOW">LOW</option>
-                <option value="MEDIUM">MEDIUM</option>
-                <option value="HIGH">HIGH</option>
+                <option value="LOW">低い</option>
+                <option value="MEDIUM">普通</option>
+                <option value="HIGH">高い</option>
               </select>
             </div>
             <div>
@@ -649,9 +661,9 @@ export default function Dashboard() {
                 onChange={(e) => setFStatus(e.target.value as any)}
               >
                 <option value="">すべて</option>
-                <option value="NOT_STARTED">NOT_STARTED</option>
-                <option value="IN_PROGRESS">IN_PROGRESS</option>
-                <option value="COMPLETED">COMPLETED</option>
+                <option value="NOT_STARTED">未着手</option>
+                <option value="IN_PROGRESS">進行中</option>
+                <option value="COMPLETED">完了</option>
               </select>
             </div>
             <div>
@@ -764,9 +776,9 @@ export default function Dashboard() {
                 value={newPriority}
                 onChange={(e) => setNewPriority(e.target.value as Priority)}
               >
-                <option value="LOW">LOW</option>
-                <option value="MEDIUM">MEDIUM</option>
-                <option value="HIGH">HIGH</option>
+                <option value="LOW">低い</option>
+                <option value="MEDIUM">普通</option>
+                <option value="HIGH">高い</option>
               </select>
             </div>
             <div>
@@ -776,9 +788,9 @@ export default function Dashboard() {
                 value={newStatus}
                 onChange={(e) => setNewStatus(e.target.value as Status)}
               >
-                <option value="NOT_STARTED">NOT_STARTED</option>
-                <option value="IN_PROGRESS">IN_PROGRESS</option>
-                <option value="COMPLETED">COMPLETED</option>
+                <option value="NOT_STARTED">未着手</option>
+                <option value="IN_PROGRESS">進行中</option>
+                <option value="COMPLETED">完了</option>
               </select>
             </div>
             <div>
@@ -922,9 +934,9 @@ export default function Dashboard() {
                                     })
                                   }
                                 >
-                                  <option value="LOW">LOW</option>
-                                  <option value="MEDIUM">MEDIUM</option>
-                                  <option value="HIGH">HIGH</option>
+                                  <option value="LOW">低い</option>
+                                  <option value="MEDIUM">普通</option>
+                                  <option value="HIGH">高い</option>
                                 </select>
                               </td>
 
@@ -954,9 +966,9 @@ export default function Dashboard() {
                                     })
                                   }
                                 >
-                                  <option value="NOT_STARTED">NOT_STARTED</option>
-                                  <option value="IN_PROGRESS">IN_PROGRESS</option>
-                                  <option value="COMPLETED">COMPLETED</option>
+                                  <option value="NOT_STARTED">未着手</option>
+                                  <option value="IN_PROGRESS">進行中</option>
+                                  <option value="COMPLETED">完了</option>
                                 </select>
                               </td>
 
@@ -1063,10 +1075,10 @@ export default function Dashboard() {
                                   className="w-4 h-4"
                                 />
                                 <span className="text-xs sm:text-sm font-medium text-gray-500">
-                                  {todo.priority}
+                                  {PRIORITY_LABEL[todo.priority]}
                                 </span>
                                 <span className="text-xs sm:text-sm font-medium text-gray-500">
-                                  {todo.status}
+                                  {STATUS_LABEL[todo.status]}
                                 </span>
                               </div>
                               <div className="flex gap-1 sm:gap-2">
