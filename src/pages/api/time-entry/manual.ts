@@ -43,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const userId = getUserIdFromReq(req);
+    const userId = await getUserIdFromReq(req);
     const { taskId, startTime, endTime } = req.body;
 
     if (!taskId || !startTime || !endTime) {

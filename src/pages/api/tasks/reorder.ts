@@ -5,7 +5,7 @@ import { getUserIdFromReq } from '../_utils/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const userId = getUserIdFromReq(req);
+    const userId = await getUserIdFromReq(req);
     if (req.method !== 'PUT') return res.status(405).json({ message: 'Method Not Allowed' });
 
     const { ids } = req.body || {};

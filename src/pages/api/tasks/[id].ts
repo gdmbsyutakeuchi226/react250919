@@ -5,7 +5,7 @@ import { getUserIdFromReq } from '../_utils/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const userId = getUserIdFromReq(req);
+    const userId = await getUserIdFromReq(req);
     const id = Number(req.query.id);
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ message: 'Invalid id' });
 

@@ -11,7 +11,7 @@ function parseBool(val?: string) {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const userId = getUserIdFromReq(req);
+    const userId = await getUserIdFromReq(req);
 
     if (req.method === 'GET') {
       const {

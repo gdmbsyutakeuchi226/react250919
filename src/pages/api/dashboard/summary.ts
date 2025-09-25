@@ -1,8 +1,8 @@
 // pages/api/dashboard/summary.ts
-// pages/api/dashboard/summary.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '@/lib/prisma';
-import { getUserIdFromReq } from '../_utils/auth';
+import { getUserIdFromReq } from "../_utils/auth";
+
 
 // リトライ方針: 開発は無限、通常は最大回数+指数バックオフ
 const INFINITE_RETRY = process.env.SERVER_INFINITE_RETRY === 'true';
@@ -50,13 +50,7 @@ async function retry<T>(fn: () => Promise<T>): Promise<T> {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    if (req.method !== 'GET') {
-      return res.status(405).json({ message: 'Method Not Allowed' });
-    }
-
-    // 認証
-    const userId = getUserIdFromReq(req);
-
+    const userId = await getUserIdFromReq(req);
     // 日付
     const { startDate, endDate } = req.query as { startDate?: string; endDate?: string };
     if (!startDate || !endDate) {
@@ -231,11 +225,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       progressRate,
       topTask,
     });
+
   } catch (err: any) {
-    if (err?.message === 'Unauthorized') {
-      return res.status(401).json({ message: 'Unauthorized' });
+    console.error("Summary API error:", err);
+    
+    // 認証エラーの場合は401を返す
+    if (err.message === "Unauthorized") {
+      return res.status(401).json({ message: "Unauthorized" });
     }
-    console.error('summary error:', err);
-    return res.status(500).json({ message: 'Internal Server Error' });
+    
+    // その他のエラーは500を返す
+    return res.status(500).json({ 
+      message: "Internal server error", 
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+    });
   }
 }

@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(405).json({ message: 'Method Not Allowed' });
     }
 
-    const userId = getUserIdFromReq(req);
+    const userId = await getUserIdFromReq(req);
     const { startDate, endDate } = req.query as { startDate?: string; endDate?: string };
 
     if (!startDate || !endDate) {

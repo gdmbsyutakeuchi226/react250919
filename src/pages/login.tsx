@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const router = useRouter();
 
+  // pages/login.tsx
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -20,9 +21,10 @@ export default function LoginPage() {
 
     const data = await res.json();
 
+    // login.tsx
     if (res.ok) {
-      console.log("Login response token:", data.token);  // ← これを追加
-      localStorage.setItem("token", data.token);
+      console.log("Login response sessionId:", data.sessionId);
+      localStorage.setItem("sessionId", data.sessionId); // ← token ではなく sessionId
       router.push("/dashboard");
     } else {
       setMessage(data.message || "Login failed");
