@@ -319,6 +319,12 @@ export default function Dashboard() {
   }
 
   async function deleteTask(id: number) {
+    // 削除確認ダイアログを表示
+    const confirmed = window.confirm('このタスクを削除しますか？この操作は取り消せません。');
+    if (!confirmed) {
+      return; // キャンセルされた場合は何もしない
+    }
+
     const t = localStorage.getItem('sessionId');
     const res = await fetch(`/api/tasks/${id}`, {
       method: 'DELETE',
@@ -907,20 +913,27 @@ export default function Dashboard() {
                                     className="border p-1 w-full"
                                   />
                                 ) : (
-                                  <span
-                                    className="cursor-text"
-                                    onDoubleClick={() =>
-                                      setTodos((prev) =>
-                                        prev.map((t) =>
-                                          t.id === todo.id
-                                            ? { ...t, isEditing: true }
-                                            : t
+                                  <div>
+                                    <span
+                                      className="cursor-text"
+                                      onDoubleClick={() =>
+                                        setTodos((prev) =>
+                                          prev.map((t) =>
+                                            t.id === todo.id
+                                              ? { ...t, isEditing: true }
+                                              : t
+                                          )
                                         )
-                                      )
-                                    }
-                                  >
-                                    {todo.title}
-                                  </span>
+                                      }
+                                    >
+                                      {todo.title}
+                                    </span>
+                                    {todo.description && (
+                                      <div className="text-xs text-gray-500 mt-1 truncate">
+                                        {todo.description}
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
                               </td>
 
@@ -1125,9 +1138,16 @@ export default function Dashboard() {
                                   className="border p-2 rounded w-full text-base sm:text-lg font-medium"
                                 />
                               ) : (
-                                <h3 className="text-base sm:text-lg font-medium text-gray-900">
-                                  {todo.title}
-                                </h3>
+                                <div>
+                                  <h3 className="text-base sm:text-lg font-medium text-gray-900">
+                                    {todo.title}
+                                  </h3>
+                                  {todo.description && (
+                                    <div className="text-xs sm:text-sm text-gray-500 mt-1">
+                                      {todo.description}
+                                    </div>
+                                  )}
+                                </div>
                               )}
                             </div>
 
