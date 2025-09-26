@@ -91,17 +91,26 @@ export default function Dashboard() {
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
-  // state
+  // 時間記録履歴のstate
+  const [timeEntries, setTimeEntries] = useState<any[]>([]);
+  const [timeEntryPage, setTimeEntryPage] = useState(1);
+  const [timeEntryTotalPages, setTimeEntryTotalPages] = useState(1);
+  const [loadingTimeEntries, setLoadingTimeEntries] = useState(false);
+  const [editingTimeEntry, setEditingTimeEntry] = useState<number | null>(null);
+  const [editDate, setEditDate] = useState('');
+  const [editStartTime, setEditStartTime] = useState('');
+  const [editEndTime, setEditEndTime] = useState('');
+  const [editBreakMinutes, setEditBreakMinutes] = useState(0);
+
+  // 時間記録登録フォームのstate
   const [manualTaskId, setManualTaskId] = useState<number | ''>('');
-  const [manualStart, setManualStart] = useState(() => {
+  const [manualDate, setManualDate] = useState(() => {
     const today = new Date();
-    return today.toISOString().slice(0, 10) + 'T09:00';
+    return today.toISOString().slice(0, 10);
   });
-  const [manualEnd, setManualEnd] = useState(() => {
-    const today = new Date();
-    return today.toISOString().slice(0, 10) + 'T17:00';
-  });
-  const [manualBreakMinutes, setManualBreakMinutes] = useState<number>(60); // デフォルト1時間休憩
+  const [manualStartTime, setManualStartTime] = useState('09:00');
+  const [manualEndTime, setManualEndTime] = useState('17:00');
+  const [manualBreakMinutes, setManualBreakMinutes] = useState<number>(60);
   // 期間フィルタ（例: 今週）
   const [startDate, setStartDate] = useState(() => {
     const now = new Date();
@@ -155,7 +164,8 @@ export default function Dashboard() {
     if (!user) return;
     fetchTasks();
     fetchTags();
-  }, [user, page, limit]);
+    fetchTimeEntries();
+  }, [user, page, limit, timeEntryPage, startDate, endDate]);
 
   // 初期ロード & 期間変更時に summary を取得（成功するまで無限リトライ）
   useEffect(() => {
@@ -267,6 +277,38 @@ export default function Dashboard() {
     }
   }
 
+  async function fetchTimeEntries() {
+    if (!user) return;
+    
+    setLoadingTimeEntries(true);
+    const t = localStorage.getItem('sessionId');
+    try {
+      const params = new URLSearchParams({
+        page: String(timeEntryPage),
+        limit: '10',
+        startDate: startDate,
+        endDate: endDate,
+      });
+
+      const res = await fetch(`/api/time-entry/history?${params}`, {
+        headers: { Authorization: `Bearer ${t}` },
+      });
+
+      if (!res.ok) {
+        console.error('GET /api/time-entry/history failed', res.status, await res.text());
+        return;
+      }
+
+      const data = await res.json();
+      setTimeEntries(data.timeEntries);
+      setTimeEntryTotalPages(data.pagination.totalPages);
+    } catch (err) {
+      console.error('Error fetching time entries:', err);
+    } finally {
+      setLoadingTimeEntries(false);
+    }
+  }
+
   async function addTask() {
     const titleTrimmed = newTitle.trim();
     if (!titleTrimmed) {
@@ -353,42 +395,101 @@ export default function Dashboard() {
     });
     await fetchTasks();
   };
-  // 関数
-  async function submitManualTime() {
-    if (!manualTaskId || !manualStart || !manualEnd) {
-      alert('全ての項目を入力してください');
+  // 時間記録の編集・削除機能
+  async function updateTimeEntry(id: number) {
+    if (!editDate || !editStartTime || !editEndTime) {
+      alert('日付、開始時刻、終了時刻を入力してください');
       return;
     }
 
     try {
-      const res = await fetch('/api/time-entry/manual', {
-        method: 'POST',
+      const startDateTime = new Date(`${editDate}T${editStartTime}`);
+      const endDateTime = new Date(`${editDate}T${editEndTime}`);
+      
+      const res = await fetch(`/api/time-entry/${id}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('sessionId') || ''}`,
         },
         body: JSON.stringify({
-          taskId: manualTaskId,
-          startTime: manualStart,
-          endTime: manualEnd,
-          breakMinutes: manualBreakMinutes,
+          startTime: startDateTime.toISOString(),
+          endTime: endDateTime.toISOString(),
+          breakMinutes: editBreakMinutes,
         }),
       });
 
       if (!res.ok) {
         const errText = await res.text();
-        throw new Error(errText || 'Failed to record time');
+        throw new Error(errText || 'Failed to update time entry');
       }
 
-      const result = await res.json();
-      alert(`時間を記録しました（休憩時間: ${manualBreakMinutes}分）`);
-      setManualTaskId('');
-      setManualStart('');
-      setManualEnd('');
-      setManualBreakMinutes(60); // デフォルト値にリセット
+      alert('時間記録を更新しました');
+      setEditingTimeEntry(null);
+      setEditDate('');
+      setEditStartTime('');
+      setEditEndTime('');
+      setEditBreakMinutes(0);
+      await fetchTimeEntries();
+      await fetchSummary();
+    } catch (err: any) {
+      console.error('updateTimeEntry error:', err);
+      alert(err?.message || 'エラーが発生しました');
+    }
+  }
 
-      // 記録後、サマリーを即時再取得（現在の期間フィルタを反映）
-      const resSummary = await fetch(
+  async function deleteTimeEntry(id: number) {
+    if (!window.confirm('この時間記録を削除しますか？')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/time-entry/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('sessionId') || ''}`,
+        },
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || 'Failed to delete time entry');
+      }
+
+      alert('時間記録を削除しました');
+      await fetchTimeEntries();
+      await fetchSummary();
+    } catch (err: any) {
+      console.error('deleteTimeEntry error:', err);
+      alert(err?.message || 'エラーが発生しました');
+    }
+  }
+
+  function startEditTimeEntry(entry: any) {
+    setEditingTimeEntry(entry.id);
+    const startDate = new Date(entry.startTime);
+    setEditDate(startDate.toISOString().slice(0, 10));
+    setEditStartTime(startDate.toTimeString().slice(0, 5));
+    if (entry.endTime) {
+      const endDate = new Date(entry.endTime);
+      setEditEndTime(endDate.toTimeString().slice(0, 5));
+    } else {
+      setEditEndTime('');
+    }
+    setEditBreakMinutes(entry.breakMinutes || 0);
+  }
+
+  function cancelEditTimeEntry() {
+    setEditingTimeEntry(null);
+    setEditDate('');
+    setEditStartTime('');
+    setEditEndTime('');
+    setEditBreakMinutes(0);
+  }
+
+  async function fetchSummary() {
+    try {
+      const res = await fetch(
         `/api/dashboard/summary?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,
         {
           headers: {
@@ -398,13 +499,58 @@ export default function Dashboard() {
         }
       );
 
-      if (!resSummary.ok) {
-        const errText = await resSummary.text();
+      if (!res.ok) {
+        const errText = await res.text();
         throw new Error(errText || 'Failed to fetch summary');
       }
 
-      const data = await resSummary.json();
+      const data = await res.json();
       setSummary(data);
+    } catch (err: any) {
+      console.error('fetchSummary error:', err);
+    }
+  }
+
+  // 時間記録の登録機能
+  async function submitManualTime() {
+    if (!manualTaskId || !manualDate || !manualStartTime || !manualEndTime) {
+      alert('全ての項目を入力してください');
+      return;
+    }
+
+    try {
+      const startDateTime = new Date(`${manualDate}T${manualStartTime}`);
+      const endDateTime = new Date(`${manualDate}T${manualEndTime}`);
+
+      const res = await fetch('/api/time-entry/manual', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('sessionId') || ''}`,
+        },
+        body: JSON.stringify({
+          taskId: manualTaskId,
+          startTime: startDateTime.toISOString(),
+          endTime: endDateTime.toISOString(),
+          breakMinutes: manualBreakMinutes,
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || 'Failed to record time');
+      }
+
+      alert(`時間を記録しました（休憩時間: ${manualBreakMinutes}分）`);
+      setManualTaskId('');
+      setManualDate(new Date().toISOString().slice(0, 10));
+      setManualStartTime('09:00');
+      setManualEndTime('17:00');
+      setManualBreakMinutes(60);
+
+      // 記録後、履歴とサマリーを再取得
+      await fetchTimeEntries();
+      await fetchSummary();
     } catch (err: any) {
       console.error('submitManualTime error:', err);
       alert(err?.message || 'エラーが発生しました');
@@ -562,9 +708,9 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* 日ごとの時間記録フォーム */}
-        <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 rounded shadow">
-          <h2 className="text-base sm:text-lg font-bold mb-3 sm:mb-4">日ごとの時間記録</h2>
+        {/* 時間記録登録フォーム */}
+        <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-green-50 rounded shadow">
+          <h2 className="text-base sm:text-lg font-bold mb-3 sm:mb-4">時間記録登録</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 items-end">
             <div className="sm:col-span-2 lg:col-span-1">
               <label className="text-xs text-gray-500">対象タスク</label>
@@ -586,14 +732,8 @@ export default function Dashboard() {
               <input
                 type="date"
                 className="border p-2 rounded w-full text-sm"
-                value={manualStart.slice(0, 10)}
-                onChange={(e) => {
-                  const date = e.target.value;
-                  if (date) {
-                    setManualStart(date + 'T09:00');
-                    setManualEnd(date + 'T17:00');
-                  }
-                }}
+                value={manualDate}
+                onChange={(e) => setManualDate(e.target.value)}
               />
             </div>
             <div>
@@ -601,13 +741,8 @@ export default function Dashboard() {
               <input
                 type="time"
                 className="border p-2 rounded w-full text-sm"
-                value={manualStart.slice(11, 16)}
-                onChange={(e) => {
-                  const time = e.target.value;
-                  if (time && manualStart) {
-                    setManualStart(manualStart.slice(0, 10) + 'T' + time);
-                  }
-                }}
+                value={manualStartTime}
+                onChange={(e) => setManualStartTime(e.target.value)}
               />
             </div>
             <div>
@@ -615,13 +750,8 @@ export default function Dashboard() {
               <input
                 type="time"
                 className="border p-2 rounded w-full text-sm"
-                value={manualEnd.slice(11, 16)}
-                onChange={(e) => {
-                  const time = e.target.value;
-                  if (time && manualEnd) {
-                    setManualEnd(manualEnd.slice(0, 10) + 'T' + time);
-                  }
-                }}
+                value={manualEndTime}
+                onChange={(e) => setManualEndTime(e.target.value)}
               />
             </div>
             <div>
@@ -639,7 +769,7 @@ export default function Dashboard() {
             <div>
               <button
                 onClick={submitManualTime}
-                className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-blue-700 w-full text-sm"
+                className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-green-700 w-full text-sm"
               >
                 記録
               </button>
@@ -648,6 +778,165 @@ export default function Dashboard() {
           <div className="mt-2 text-xs text-gray-600">
             ※ 同じタスクの同じ日付で記録した場合、既存の記録は上書きされます
           </div>
+        </div>
+
+        {/* 時間記録履歴 */}
+        <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 rounded shadow">
+          <h2 className="text-base sm:text-lg font-bold mb-3 sm:mb-4">時間記録履歴</h2>
+          
+          {loadingTimeEntries && (
+            <div className="text-center py-4 text-gray-600">
+              読み込み中...
+            </div>
+          )}
+
+          {!loadingTimeEntries && timeEntries.length === 0 && (
+            <div className="text-center py-4 text-gray-600">
+              記録された時間がありません
+            </div>
+          )}
+
+          {!loadingTimeEntries && timeEntries.length > 0 && (
+            <div className="space-y-3">
+              {timeEntries.map((entry) => (
+                <div key={entry.id} className="bg-white rounded-lg p-3 sm:p-4 shadow-sm">
+                  {editingTimeEntry === entry.id ? (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                        <div>
+                          <label className="text-xs text-gray-500">タスク</label>
+                          <div className="text-sm font-medium">{entry.task.title}</div>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">日付</label>
+                          <input
+                            type="date"
+                            className="border p-2 rounded w-full text-sm"
+                            value={editDate}
+                            onChange={(e) => setEditDate(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">開始時刻</label>
+                          <input
+                            type="time"
+                            className="border p-2 rounded w-full text-sm"
+                            value={editStartTime}
+                            onChange={(e) => setEditStartTime(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">終了時刻</label>
+                          <input
+                            type="time"
+                            className="border p-2 rounded w-full text-sm"
+                            value={editEndTime}
+                            onChange={(e) => setEditEndTime(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">休憩時間（分）</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="480"
+                            className="border p-2 rounded w-full text-sm"
+                            value={editBreakMinutes}
+                            onChange={(e) => setEditBreakMinutes(Number(e.target.value) || 0)}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => updateTimeEntry(entry.id)}
+                          className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-sm"
+                        >
+                          保存
+                        </button>
+                        <button
+                          onClick={cancelEditTimeEntry}
+                          className="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600 text-sm"
+                        >
+                          キャンセル
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <span className="text-sm font-medium">{entry.task.title}</span>
+                          {entry.task.tags && entry.task.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {entry.task.tags.map((tag: any) => (
+                                <span
+                                  key={tag.name}
+                                  className="text-xs px-2 py-0.5 bg-gray-200 text-gray-800 rounded"
+                                >
+                                  {tag.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-600 space-y-1">
+                          <div>
+                            開始: {new Date(entry.startTime).toLocaleString('ja-JP')}
+                          </div>
+                          <div>
+                            終了: {entry.endTime ? new Date(entry.endTime).toLocaleString('ja-JP') : '-'}
+                          </div>
+                          <div>
+                            作業時間: {entry.durationMinutes}分
+                            {(entry.breakMinutes || 0) > 0 && (
+                              <span className="text-gray-500"> (休憩: {entry.breakMinutes || 0}分)</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => startEditTimeEntry(entry)}
+                          className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 text-sm"
+                        >
+                          編集
+                        </button>
+                        <button
+                          onClick={() => deleteTimeEntry(entry.id)}
+                          className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm"
+                        >
+                          削除
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ページング */}
+          {!loadingTimeEntries && timeEntryTotalPages > 1 && (
+            <div className="flex justify-center items-center gap-2 mt-4">
+              <button
+                disabled={timeEntryPage <= 1}
+                onClick={() => setTimeEntryPage(p => Math.max(p - 1, 1))}
+                className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 text-sm"
+              >
+                前へ
+              </button>
+              <span className="text-sm">
+                {timeEntryPage} / {timeEntryTotalPages}
+              </span>
+              <button
+                disabled={timeEntryPage >= timeEntryTotalPages}
+                onClick={() => setTimeEntryPage(p => Math.min(p + 1, timeEntryTotalPages))}
+                className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 text-sm"
+              >
+                次へ
+              </button>
+            </div>
+          )}
         </div>
 
 

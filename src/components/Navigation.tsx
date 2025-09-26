@@ -40,10 +40,10 @@ export default function Navigation({ user, onLogout }: NavigationProps) {
                 ダッシュボード
               </button>
               <button
-                onClick={() => router.push('/admin')}
+                onClick={() => router.push('/history')}
                 className="text-gray-900 hover:bg-gray-100 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               >
-                管理画面
+                タスク時間履歴
               </button>
               <button
                 onClick={handleLogout}
@@ -113,12 +113,12 @@ export default function Navigation({ user, onLogout }: NavigationProps) {
           </button>
           <button
             onClick={() => {
-              router.push('/admin');
+              router.push('/history');
               setIsOpen(false);
             }}
             className="text-gray-900 hover:bg-gray-100 block px-3 py-2 rounded-md text-base font-medium w-full text-left transition-colors"
           >
-            管理画面
+            タスク時間履歴
           </button>
           <button
             onClick={handleLogout}

@@ -96,7 +96,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         data: {
           taskId,
           startTime: seg.startTime,
+          endTime: end, // 終了時刻を保存
           durationMinutes: seg.durationMinutes,
+          breakMinutes: breakMins, // 休憩時間を保存
         },
       });
     }

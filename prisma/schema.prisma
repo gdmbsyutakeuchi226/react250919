@@ -51,7 +51,9 @@ model Task {
 model TimeEntry {
   id              Int      @id @default(autoincrement())
   startTime       DateTime
+  endTime         DateTime?
   durationMinutes Int
+  breakMinutes    Int      @default(0)
   task            Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   taskId          Int
 }
