@@ -101,6 +101,7 @@ export default function Dashboard() {
     const today = new Date();
     return today.toISOString().slice(0, 10) + 'T17:00';
   });
+  const [manualBreakMinutes, setManualBreakMinutes] = useState<number>(60); // デフォルト1時間休憩
   // 期間フィルタ（例: 今週）
   const [startDate, setStartDate] = useState(() => {
     const now = new Date();
@@ -370,6 +371,7 @@ export default function Dashboard() {
           taskId: manualTaskId,
           startTime: manualStart,
           endTime: manualEnd,
+          breakMinutes: manualBreakMinutes,
         }),
       });
 
@@ -378,10 +380,12 @@ export default function Dashboard() {
         throw new Error(errText || 'Failed to record time');
       }
 
-      alert('時間を記録しました');
+      const result = await res.json();
+      alert(`時間を記録しました（休憩時間: ${manualBreakMinutes}分）`);
       setManualTaskId('');
       setManualStart('');
       setManualEnd('');
+      setManualBreakMinutes(60); // デフォルト値にリセット
 
       // 記録後、サマリーを即時再取得（現在の期間フィルタを反映）
       const resSummary = await fetch(
@@ -561,7 +565,7 @@ export default function Dashboard() {
         {/* 日ごとの時間記録フォーム */}
         <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 rounded shadow">
           <h2 className="text-base sm:text-lg font-bold mb-3 sm:mb-4">日ごとの時間記録</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 items-end">
             <div className="sm:col-span-2 lg:col-span-1">
               <label className="text-xs text-gray-500">対象タスク</label>
               <select
@@ -621,6 +625,18 @@ export default function Dashboard() {
               />
             </div>
             <div>
+              <label className="text-xs text-gray-500">休憩時間（分）</label>
+              <input
+                type="number"
+                min="0"
+                max="480"
+                className="border p-2 rounded w-full text-sm"
+                value={manualBreakMinutes}
+                onChange={(e) => setManualBreakMinutes(Number(e.target.value) || 0)}
+                placeholder="60"
+              />
+            </div>
+            <div>
               <button
                 onClick={submitManualTime}
                 className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-blue-700 w-full text-sm"
@@ -628,6 +644,9 @@ export default function Dashboard() {
                 記録
               </button>
             </div>
+          </div>
+          <div className="mt-2 text-xs text-gray-600">
+            ※ 同じタスクの同じ日付で記録した場合、既存の記録は上書きされます
           </div>
         </div>
 
@@ -893,14 +912,13 @@ export default function Dashboard() {
                                 />
                               </td>
 
-                              <td className="p-2 truncate">
+                              <td className="p-2">
                                 {todo.isEditing ? (
-                                  <input
-                                    type="text"
-                                    defaultValue={todo.title}
-                                    onBlur={(e) => {
-                                      const v = e.target.value.trim();
-                                      updateTask(todo.id, { title: v || todo.title });
+                                  <div className="space-y-2" onBlur={(e) => {
+                                    // 新しいフォーカス先が編集フォーム内の要素でない場合のみ編集を終了
+                                    const currentTarget = e.currentTarget;
+                                    const relatedTarget = e.relatedTarget as Node;
+                                    if (!currentTarget.contains(relatedTarget)) {
                                       setTodos((prev) =>
                                         prev.map((t) =>
                                           t.id === todo.id
@@ -908,12 +926,52 @@ export default function Dashboard() {
                                             : t
                                         )
                                       );
-                                    }}
-                                    autoFocus
-                                    className="border p-1 w-full"
-                                  />
+                                    }
+                                  }}>
+                                    <input
+                                      type="text"
+                                      defaultValue={todo.title}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          const v = (e.target as HTMLInputElement).value.trim();
+                                          updateTask(todo.id, { title: v || todo.title });
+                                        } else if (e.key === 'Escape') {
+                                          setTodos((prev) =>
+                                            prev.map((t) =>
+                                              t.id === todo.id
+                                                ? { ...t, isEditing: false }
+                                                : t
+                                            )
+                                          );
+                                        }
+                                      }}
+                                      autoFocus
+                                      className="border p-1 w-full text-sm"
+                                      placeholder="タイトル"
+                                    />
+                                    <input
+                                      type="text"
+                                      defaultValue={todo.description || ''}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          const v = (e.target as HTMLInputElement).value.trim();
+                                          updateTask(todo.id, { description: v || null });
+                                        } else if (e.key === 'Escape') {
+                                          setTodos((prev) =>
+                                            prev.map((t) =>
+                                              t.id === todo.id
+                                                ? { ...t, isEditing: false }
+                                                : t
+                                            )
+                                          );
+                                        }
+                                      }}
+                                      className="border p-1 w-full text-xs"
+                                      placeholder="説明（任意）"
+                                    />
+                                  </div>
                                 ) : (
-                                  <div>
+                                  <div className="truncate">
                                     <span
                                       className="cursor-text"
                                       onDoubleClick={() =>
@@ -1120,12 +1178,11 @@ export default function Dashboard() {
 
                             <div className="mb-2 sm:mb-3">
                               {todo.isEditing ? (
-                                <input
-                                  type="text"
-                                  defaultValue={todo.title}
-                                  onBlur={(e) => {
-                                    const v = e.target.value.trim();
-                                    updateTask(todo.id, { title: v || todo.title });
+                                <div className="space-y-2" onBlur={(e) => {
+                                  // 新しいフォーカス先が編集フォーム内の要素でない場合のみ編集を終了
+                                  const currentTarget = e.currentTarget;
+                                  const relatedTarget = e.relatedTarget as Node;
+                                  if (!currentTarget.contains(relatedTarget)) {
                                     setTodos((prev) =>
                                       prev.map((t) =>
                                         t.id === todo.id
@@ -1133,10 +1190,50 @@ export default function Dashboard() {
                                           : t
                                       )
                                     );
-                                  }}
-                                  autoFocus
-                                  className="border p-2 rounded w-full text-base sm:text-lg font-medium"
-                                />
+                                  }
+                                }}>
+                                  <input
+                                    type="text"
+                                    defaultValue={todo.title}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        const v = (e.target as HTMLInputElement).value.trim();
+                                        updateTask(todo.id, { title: v || todo.title });
+                                      } else if (e.key === 'Escape') {
+                                        setTodos((prev) =>
+                                          prev.map((t) =>
+                                            t.id === todo.id
+                                              ? { ...t, isEditing: false }
+                                              : t
+                                          )
+                                        );
+                                      }
+                                    }}
+                                    autoFocus
+                                    className="border p-2 rounded w-full text-base sm:text-lg font-medium"
+                                    placeholder="タイトル"
+                                  />
+                                  <input
+                                    type="text"
+                                    defaultValue={todo.description || ''}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        const v = (e.target as HTMLInputElement).value.trim();
+                                        updateTask(todo.id, { description: v || null });
+                                      } else if (e.key === 'Escape') {
+                                        setTodos((prev) =>
+                                          prev.map((t) =>
+                                            t.id === todo.id
+                                              ? { ...t, isEditing: false }
+                                              : t
+                                          )
+                                        );
+                                      }
+                                    }}
+                                    className="border p-2 rounded w-full text-sm"
+                                    placeholder="説明（任意）"
+                                  />
+                                </div>
                               ) : (
                                 <div>
                                   <h3 className="text-base sm:text-lg font-medium text-gray-900">
