@@ -80,3 +80,9 @@
 | 休憩時間 | 開始時刻と終了時刻から差し引いた時間を編集します。分単位に入力。 |
 | 保存 | 変更された内容を保存します。 |
 | キャンセル | 変更された内容を変更せず終了します。 |
+
+## 6.ライセンス
+This is free and unencumbered software released into the public domain.  
+See the [LICENSE](./LICENSE) file for details.
+
+学習課題用です。
