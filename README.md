@@ -83,6 +83,4 @@
 
 ## 6.ライセンス
 This is free and unencumbered software released into the public domain.  
-See the [LICENSE](./LICENSE) file for details.
-
 学習課題用です。
