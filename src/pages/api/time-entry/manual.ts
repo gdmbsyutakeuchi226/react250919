@@ -2,11 +2,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '@/lib/prisma';
 import { getUserIdFromReq } from '../_utils/auth';
 
-const MAX_MINUTES_PER_DAY = 8 * 60; // 1日あたりの最大記録時間（分）
-
 /**
- * 開始日時と終了日時を日ごとに分割し、1日あたりの上限時間を適用して返す
- * 休憩時間を考慮した時間計算を行う
+ * 開始日時と終了日時を日ごとに分割し、休憩時間を考慮した時間計算を行う
  */
 function splitIntoDailyEntries(start: Date, end: Date, breakMinutes: number = 0) {
   const entries: { startTime: Date; durationMinutes: number }[] = [];
@@ -24,8 +21,8 @@ function splitIntoDailyEntries(start: Date, end: Date, breakMinutes: number = 0)
     let minutes = Math.round((segmentEnd.getTime() - current.getTime()) / 60000);
     minutes = Math.max(0, minutes - breakMinutes);
 
-    // 上限適用（最低1分は記録）
-    minutes = Math.max(1, Math.min(minutes, MAX_MINUTES_PER_DAY));
+    // 最低1分は記録（上限は削除）
+    minutes = Math.max(1, minutes);
 
     entries.push({
       startTime: new Date(current),
