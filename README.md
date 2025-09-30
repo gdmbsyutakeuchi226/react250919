@@ -31,7 +31,7 @@ git clone https://github.com/gdmbsyutakeuchi226/react250919.git
 ```
 2. フォルダに移動し、依存関係をインストールします。
 ```shell
-cd あなたのリポジトリ名
+cd react250919
 npm install
 ```
 3. 以下のコマンドで開発サーバーを起動します。
