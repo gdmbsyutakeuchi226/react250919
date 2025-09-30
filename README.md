@@ -34,7 +34,7 @@ git clone https://github.com/あなたのユーザー名/あなたのリポジ�
 cd あなたのリポジトリ名
 npm install
 ```
-3.以下のコマンドで開発サーバーを起動します。
+3. 以下のコマンドで開発サーバーを起動します。
 ```Shell
 npm run dev
 ```
