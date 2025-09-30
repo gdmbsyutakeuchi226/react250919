@@ -27,7 +27,7 @@
 ### 3-1.インストールする
 1. まず、このリポジトリをクローンします。
 ```shell
-git clone https://github.com/あなたのユーザー名/あなたのリポジトリ名.git
+git clone https://github.com/gdmbsyutakeuchi226/react250919.git
 ```
 2. フォルダに移動し、依存関係をインストールします。
 ```shell
