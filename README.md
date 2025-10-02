@@ -38,6 +38,7 @@ docker exec -it <dbコンテナ名> psql -U postgres -c "CREATE DATABASE react_a
 ```bash
 DATABASE_URL="postgresql://postgres:password@localhost:5432/react_app?schema=public"
 ```
+※ password や react_app は環境に合わせて変更してください。
 ### 3-4. Prismaマイグレーション
 ```bash
 npx prisma migrate dev
