@@ -22,13 +22,24 @@
 | tailwind | 10.9.3 |
 | Docker | 28.3.2 |
 
-## 3.インストール方法・起動コマンド
-
-### 3-1.インストールする
-1. まず、このリポジトリをクローンします。
-```shell
-git clone https://github.com/gdmbsyutakeuchi226/react250919.git
+## 3.環境構築と起動方法
+### 3-1. Dockerコンテナの起動
+まずはDockerでDBを立ち上げます。
+```bash
+docker compose up -d
 ```
+### 3-2. データベースの初期化
+PostgreSQLを利用しています。初回はDBを作成してください。
+```bash
+docker exec -it <dbコンテナ名> psql -U postgres -c "CREATE DATABASE react_app;"
+```
+### 3-3. 環境変数ファイルの作成
+ルートディレクトリに .env を作成し、以下のように設定します。
+```bash
+DATABASE_URL="postgresql://postgres:password@localhost:5432/react_app?schema=public"
+```
+
+
 2. フォルダに移動し、依存関係をインストールします。
 ```shell
 cd react250919
