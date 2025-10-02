@@ -45,7 +45,6 @@ npx prisma migrate dev
 ```
 ### 3-5.依存関係をインストールし、開発サーバーを起動します。
 ```shell
-cd react250919
 npm install
 ```
 ### 3-6.以下のコマンドで開発サーバーを起動します。
