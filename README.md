@@ -38,17 +38,20 @@ docker exec -it <dbコンテナ名> psql -U postgres -c "CREATE DATABASE react_a
 ```bash
 DATABASE_URL="postgresql://postgres:password@localhost:5432/react_app?schema=public"
 ```
-
-
-2. フォルダに移動し、依存関係をインストールします。
+### 3-4. Prismaマイグレーション
+```bash
+npx prisma migrate dev
+```
+### 3-5.依存関係をインストールし、開発サーバーを起動します。
 ```shell
 cd react250919
 npm install
 ```
-3. 以下のコマンドで開発サーバーを起動します。
+### 3-6.以下のコマンドで開発サーバーを起動します。
 ```Shell
 npm run dev
 ```
+ブラウザで http://localhost:3000 にアクセスしてください。
 
 ![](img/run_consloe.png)  
 このような表示が出ていれば起動となります。  
